@@ -1,0 +1,13 @@
+@use "variable" as *;
+
+.el-form {
+  .el-form-item {
+    & > .el-input, .el-cascader, .el-select, .el-date-editor, .el-autocomplete {
+      width: 100%;
+    }
+
+    .el-row {
+      flex-grow: 1;
+    }
+  }
+}
