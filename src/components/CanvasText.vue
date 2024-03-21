@@ -1,7 +1,7 @@
 <template>
   <div class="canvas-text-container">
     <div class="canvas-text">
-      <canvas id="canvas" :width="width" :height="height" />
+      <canvas ref="canvas" />
     </div>
     <div class="form">
       <div class="form-header">
@@ -38,6 +38,22 @@
               :precision="0"
             />
           </el-form-item>
+          <el-form-item label="字号">
+            <el-input-number
+              v-model="form.fontSize"
+              :min="0"
+              :max="200"
+              :precision="0"
+            />
+          </el-form-item>
+          <el-form-item label="行距">
+            <el-input-number
+              v-model="form.lineHeight"
+              :min="0"
+              :max="10"
+              :step="0.1"
+            />
+          </el-form-item>
           <el-form-item label="文本">
             <el-input
               v-model="form.text"
@@ -46,6 +62,9 @@
               :autosize="{minRows: 3}"
               placeholder="请输入文本"
             />
+          </el-form-item>
+          <el-form-item label="字框">
+            <el-switch v-model="form.border" />
           </el-form-item>
         </el-form>
       </div>
@@ -56,178 +75,101 @@
 <script setup>
   import { Icon } from '@iconify/vue';
   import opentype from 'opentype.js';
-  import { reactive, ref } from 'vue';
+  import { computed, onMounted, reactive, ref, watch } from 'vue';
+  import fontUrl from '@/assets/font/SmileySans-Oblique.otf';
 
-  const form = reactive({
-    width: 800,
-    height: 260,
-    text: '<b>文本，</b>是指书面语言的表现形式，从文学角度说，通常是具有完整、系统[含义(Message)]的一个句子或多个句子的组合。' +
-      '一个文本可以是一个[句子(Sentence)]、一个[段落(Paragraph)]或者一个[篇章(Discourse)]。' +
-      '<b>广义“文本”：</b>任何由书写所固定下来的任何话语。' +
-      '<b>[狭义(利科尔)]“文本”：</b>由语言文字组成的文学实体，代指“作品”，相对于作者、世界构成一个独立、自足的系统。',
-  });
-  const width = 1200;
-  const height = 800;
-  const value = ref('Hello, World! 你好！ToToT');
-  const fontSize = 72;
-  const lineHeight = 1.5;
-  const halfHeight = fontSize * (lineHeight - 1) / 2;
   let font = null;
-  let ratio = null;
-
-  const buffer = fetch('SmileySans-Oblique.otf').then(res => res.arrayBuffer());
-  buffer.then(data => {
-    font = opentype.parse(data);
-    console.log(font);
-    ratio = fontSize / font.unitsPerEm;
-    drawText();
+  const canvas = ref(null);
+  const ctx = ref(null);
+  const form = reactive({
+    width: 1440,
+    height: 800,
+    fontSize: 48,
+    lineHeight: 1.5,
+    text: 'Canvas API 提供了一个通过JavaScript 和 HTML的<canvas>元素来绘制图形的方式。它可以用于动画、游戏画面、数据可视化、图片编辑以及实时视频处理等方面。\n' +
+      'Canvas API 主要聚焦于 2D 图形。而同样使用<canvas>元素的 WebGL API 则用于绘制硬件加速的 2D 和 3D 图形。\n' +
+      '\n' +
+      'The Canvas API provides a means for drawing graphics via JavaScript and the HTML <canvas> element. Among other things, it can be used for animation, game graphics, data visualization, photo manipulation, and real-time video processing.\n' +
+      'The Canvas API largely focuses on 2D graphics. The WebGL API, which also uses the <canvas> element, draws hardware-accelerated 2D and 3D graphics.',
+    border: false,
   });
+  const lastX = ref(0);
+  const lastY = ref(0);
+  const lastGlyph = ref(null);
 
-  function drawText() {
-    if (!font) return;
+  loadFont();
 
-    const ctx = document.getElementById('canvas').getContext('2d');
-    const letter = value.value;
-    const letterList = letter.split('');
-    let lastGlyph = font.charToGlyph('');
-    let lastX = 0;
-    let lastY = font.ascender * ratio + halfHeight;
-    // 绘制单个文字 + kerning 控制
-    letterList.forEach(letter => {
-      if (letter === '\n') {
-        lastX = 0;
-        lastY += (font.ascender - font.descender) * ratio + halfHeight;
-      } else {
-        const glyph = font.charToGlyph(letter);
-        const kerning = font.getKerningValue(lastGlyph, glyph) * ratio;
-        font.draw(ctx, letter, lastX + kerning, lastY, fontSize);
-        lastGlyph = glyph;
-        lastX += glyph.advanceWidth * ratio + kerning;
-      }
+  function loadFont() {
+    const buffer = fetch(fontUrl).then(res => res.arrayBuffer());
+    buffer.then(data => {
+      font = opentype.parse(data);
+      drawText();
     });
   }
 
-  function handleInput() {
-    const ctx = document.getElementById('canvas').getContext('2d');
-    ctx.clearRect(0, 0, width, height);
-    drawText();
+  function drawText() {
+    if (!font) return;
+    canvas.value.width = form.width;
+    canvas.value.height = form.height;
+    lastX.value = 0;
+    lastY.value = font.ascender * fontRatio.value + halfLineHeight.value;
+    lastGlyph.value = font.charToGlyph('');
+
+    const charList = Array.from(form.text);
+    // 绘制单个文字 + kerning 控制
+    charList.forEach(char => {
+      drawChar(char);
+    });
   }
 
-// let compressText = null;
-//
-// export default {
-//   name: 'CompressText',
-//   components: {
-//     Icon,
-//   },
-//   data() {
-//     return {
-//       gutter: 10,
-//       leafer: null,
-//       firstLineTextScale: 1,
-//       textScale: 1,
-//       form: {
-//         width: 800,
-//         height: 260,
-//         text: '<b>文本，</b>是指书面语言的表现形式，从文学角度说，通常是具有完整、系统[含义(Message)]的一个句子或多个句子的组合。' +
-//           '一个文本可以是一个[句子(Sentence)]、一个[段落(Paragraph)]或者一个[篇章(Discourse)]。' +
-//           '<b>广义“文本”：</b>任何由书写所固定下来的任何话语。' +
-//           '<b>[狭义(利科尔)]“文本”：</b>由语言文字组成的文学实体，代指“作品”，相对于作者、世界构成一个独立、自足的系统。',
-//         firstLineCompress: false,
-//         color: '#000000',
-//         textAlign: 'justify',
-//         gradient: false,
-//         gradientColor1: '#999999',
-//         gradientColor2: '#ffffff',
-//         gradientPreset: 'silver',
-//         strokeWidth: 0,
-//         fontScale: 1,
-//         visible: true,
-//       },
-//       gradientList: [
-//         { label: '银字', value: 'silver', color1: '#999999', color2: '#ffffff' },
-//         { label: '金字', value: 'gold', color1: '#cc9900', color2: '#ffff00' },
-//         { label: '红字', value: 'red', color1: '#990000', color2: '#ff0000' },
-//         { label: '白字', value: 'white', color1: '#ffffff', color2: '#ffffff' },
-//         { label: '黑字', value: 'black', color1: '#333333', color2: '#999999' },
-//         { label: '蓝字', value: 'blue', color1: '#009999', color2: '#00ffff' },
-//         { label: '绿字', value: 'green', color1: '#009900', color2: '#00ff00' },
-//       ],
-//     };
-//   },
-//   mounted() {
-//   // this.initLeafer();
-//   // this.drawText();
-//   },
-//   methods: {
-//     initLeafer() {
-//       this.leafer = new Leafer({
-//         view: this.$refs.leafer,
-//         width: 1200,
-//         height: 800,
-//         type: 'user',
-//         wheel: {
-//           preventDefault: false,
-//         },
-//       });
-//     },
-//     drawText() {
-//       // 如果此处用this.compressText绑定，vue会进行proxy代理，导致性能下降严重
-//       if (!compressText) {
-//         compressText = new CompressText();
-//         this.leafer.add(compressText);
-//       }
-//       compressText.set({
-//         text: this.form.text,
-//         width: this.form.width,
-//         height: this.form.height,
-//         fontFamily: 'Helvetica Neue, Helvetica, PingFang SC, Hiragino Sans GB, Microsoft YaHei, 微软雅黑, Arial, sans-serif',
-//         fontSize: 24,
-//         color: this.form.color,
-//         lineHeight: 2,
-//         rtFontSize: 14,
-//         rtColor: this.form.color,
-//         rtTop: -6,
-//         x: 20,
-//         y: 20,
-//         firstLineCompress: this.form.firstLineCompress,
-//         textAlign: this.form.textAlign,
-//         gradient: this.form.gradient,
-//         gradientColor1: this.form.gradientColor1,
-//         gradientColor2: this.form.gradientColor2,
-//         strokeWidth: this.form.strokeWidth,
-//         fontScale: this.form.fontScale,
-//         visible: this.form.visible,
-//       // autoSmallSize: true,
-//       // smallFontSize: 18,
-//       });
-//
-//       this.firstLineTextScale = compressText.firstLineTextScale;
-//       this.textScale = compressText.textScale;
-//     },
-//     changeGradientColor() {
-//       this.form.gradientPreset = '';
-//     },
-//     changeGradientPreset(value) {
-//       const gradient = this.gradientList.find(item => item.value === value);
-//       if (gradient) {
-//         this.form.gradientColor1 = gradient.color1;
-//         this.form.gradientColor2 = gradient.color2;
-//       }
-//     },
-//     toGithub() {
-//       open('https://github.com/kooriookami/canvas-text');
-//     },
-//   },
-//   watch: {
-//     form: {
-//       handler() {
-//         this.drawText();
-//       },
-//       deep: true,
-//     },
-//   },
-// };
+  function drawChar(char) {
+    if (char === '\n') {
+      newLine();
+    } else {
+      const glyph = font.charToGlyph(char);
+      let kerning = font.getKerningValue(lastGlyph, glyph) * fontRatio.value;
+      const actualWidth = glyph.advanceWidth * fontRatio.value + kerning;
+      if (lastX.value + actualWidth > form.width) {
+        newLine();
+        kerning = 0;
+      }
+      font.draw(ctx.value, char, lastX.value + kerning, lastY.value, form.fontSize);
+      if (form.border) {
+        ctx.value.strokeStyle = '#409EFF';
+        ctx.value.strokeRect(lastX.value + kerning, lastY.value - form.fontSize, actualWidth, form.fontSize - (font.descender * fontRatio.value));
+      }
+      lastGlyph.value = glyph;
+      lastX.value += actualWidth;
+    }
+  }
+
+  function newLine() {
+    lastX.value = 0;
+    lastY.value += (font.ascender - font.descender) * fontRatio.value + halfLineHeight.value;
+  }
+
+  function toGithub() {
+    open('https://github.com/kooriookami/canvas-text');
+  }
+
+  const fontRatio = computed(() => {
+    if (font) {
+      return form.fontSize / font.unitsPerEm;
+    }
+    return 1;
+  });
+
+  const halfLineHeight = computed(() => form.fontSize * (form.lineHeight - 1) / 2);
+
+  onMounted(() => {
+    ctx.value = canvas.value.getContext('2d');
+  });
+
+  watch(() => form, () => {
+    drawText();
+  }, {
+    deep: true,
+  });
 </script>
 
 <style lang="scss" scoped>
@@ -243,7 +185,7 @@
     position: relative;
     padding: 20px;
 
-    .leafer {
+    canvas {
       display: inline-flex;
       box-shadow: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, .04);
     }

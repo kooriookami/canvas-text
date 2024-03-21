@@ -1,9 +1,9 @@
 <template>
-  <CanvasText></CanvasText>
+  <CanvasText />
 </template>
 
 <script setup>
-import CanvasText from "@/components/CanvasText.vue";
+  import CanvasText from '@/components/CanvasText.vue';
 </script>
 
 <style lang="scss">
@@ -19,3 +19,4 @@ body {
   font-size: 14px;
 }
 </style>
+
