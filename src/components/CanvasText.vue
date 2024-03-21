@@ -1,6 +1,12 @@
 <template>
   <div class="canvas-text-container">
     <div class="canvas-text">
+      <el-alert
+        v-if="loading"
+        effect="dark"
+        title="字体加载中..."
+        :closable="false"
+      />
       <canvas ref="canvas" />
     </div>
     <div class="form">
@@ -79,6 +85,7 @@
   import fontUrl from '@/assets/font/SmileySans-Oblique.otf';
 
   let font = null;
+  const loading = ref(false);
   const canvas = ref(null);
   const ctx = ref(null);
   const form = reactive({
@@ -100,10 +107,13 @@
   loadFont();
 
   function loadFont() {
+    loading.value = true;
     const buffer = fetch(fontUrl).then(res => res.arrayBuffer());
     buffer.then(data => {
       font = opentype.parse(data);
       drawText();
+    }).finally(() => {
+      loading.value = false;
     });
   }
 
@@ -184,6 +194,11 @@
     flex-grow: 1;
     position: relative;
     padding: 20px;
+
+    .el-alert {
+      margin-bottom: 20px;
+      background: #409EFF;
+    }
 
     canvas {
       display: inline-flex;
