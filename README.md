@@ -4,4 +4,4 @@
 
 ## 在线演示
 
-[在线演示](https://kooriookami.github.io/leafer-compress-text/)
+[在线演示](https://kooriookami.github.io/canvas-text/)
