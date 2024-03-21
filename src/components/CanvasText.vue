@@ -7,6 +7,7 @@
         title="字体加载中..."
         :closable="false"
       />
+      <!--      <p style="font-size: 48px;line-height: 1;font-family: 得意黑">{{ form.text }}</p>-->
       <canvas ref="canvas" />
     </div>
     <div class="form">
@@ -40,7 +41,7 @@
             <el-input-number
               v-model="form.height"
               :min="0"
-              :max="2000"
+              :max="8000"
               :precision="0"
             />
           </el-form-item>
@@ -83,6 +84,7 @@
   import opentype from 'opentype.js';
   import { computed, onMounted, reactive, ref, watch } from 'vue';
   import fontUrl from '@/assets/font/SmileySans-Oblique.otf';
+  import demoText from './demo-text.txt?raw';
 
   let font = null;
   const loading = ref(false);
@@ -93,11 +95,7 @@
     height: 800,
     fontSize: 48,
     lineHeight: 1.5,
-    text: 'Canvas API 提供了一个通过JavaScript 和 HTML的<canvas>元素来绘制图形的方式。它可以用于动画、游戏画面、数据可视化、图片编辑以及实时视频处理等方面。\n' +
-      'Canvas API 主要聚焦于 2D 图形。而同样使用<canvas>元素的 WebGL API 则用于绘制硬件加速的 2D 和 3D 图形。\n' +
-      '\n' +
-      'The Canvas API provides a means for drawing graphics via JavaScript and the HTML <canvas> element. Among other things, it can be used for animation, game graphics, data visualization, photo manipulation, and real-time video processing.\n' +
-      'The Canvas API largely focuses on 2D graphics. The WebGL API, which also uses the <canvas> element, draws hardware-accelerated 2D and 3D graphics.',
+    text: demoText,
     border: false,
   });
   const lastX = ref(0);
@@ -169,7 +167,7 @@
     return 1;
   });
 
-  const halfLineHeight = computed(() => form.fontSize * (form.lineHeight - 1) / 2);
+  const halfLineHeight = computed(() => (font.ascender - font.descender) * fontRatio.value * (form.lineHeight - 1) / 2);
 
   onMounted(() => {
     ctx.value = canvas.value.getContext('2d');
