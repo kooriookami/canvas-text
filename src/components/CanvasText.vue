@@ -7,7 +7,7 @@
         title="字体加载中..."
         :closable="false"
       />
-      <!--      <p style="font-size: 48px;line-height: 1;font-family: 得意黑">{{ form.text }}</p>-->
+      <!--      <p style="font-size: 48px;line-height: 2;font-family: 得意黑;width: 1440px">{{ form.text }}</p>-->
       <canvas ref="canvas" />
     </div>
     <div class="form">
@@ -82,11 +82,11 @@
 <script setup>
   import { Icon } from '@iconify/vue';
   import opentype from 'opentype.js';
-  import { computed, onMounted, reactive, ref, watch } from 'vue';
+  import { computed, onMounted, reactive, ref, shallowRef, watch } from 'vue';
   import fontUrl from '@/assets/font/SmileySans-Oblique.otf';
   import demoText from './demo-text.txt?raw';
 
-  let font = null;
+  let font = shallowRef(null);
   const loading = ref(false);
   const canvas = ref(null);
   const ctx = ref(null);
@@ -108,7 +108,7 @@
     loading.value = true;
     const buffer = fetch(fontUrl).then(res => res.arrayBuffer());
     buffer.then(data => {
-      font = opentype.parse(data);
+      font.value = opentype.parse(data);
       drawText();
     }).finally(() => {
       loading.value = false;
@@ -116,14 +116,15 @@
   }
 
   function drawText() {
-    if (!font) return;
+    if (!font.value) return;
     canvas.value.width = form.width;
     canvas.value.height = form.height;
     lastX.value = 0;
-    lastY.value = font.ascender * fontRatio.value + halfLineHeight.value;
-    lastGlyph.value = font.charToGlyph('');
+    lastY.value = form.fontSize + lineGap.value / 2;
+    lastGlyph.value = font.value.charToGlyph('');
 
     const charList = Array.from(form.text);
+    console.log(charList);
     // 绘制单个文字 + kerning 控制
     charList.forEach(char => {
       drawChar(char);
@@ -131,20 +132,21 @@
   }
 
   function drawChar(char) {
+    if (char === '\r') return;
     if (char === '\n') {
       newLine();
     } else {
-      const glyph = font.charToGlyph(char);
-      let kerning = font.getKerningValue(lastGlyph, glyph) * fontRatio.value;
+      const glyph = font.value.charToGlyph(char);
+      let kerning = font.value.getKerningValue(lastGlyph, glyph) * fontRatio.value;
       const actualWidth = glyph.advanceWidth * fontRatio.value + kerning;
       if (lastX.value + actualWidth > form.width) {
         newLine();
         kerning = 0;
       }
-      font.draw(ctx.value, char, lastX.value + kerning, lastY.value, form.fontSize);
+      font.value.draw(ctx.value, char, lastX.value + kerning, lastY.value, form.fontSize);
       if (form.border) {
         ctx.value.strokeStyle = '#409EFF';
-        ctx.value.strokeRect(lastX.value + kerning, lastY.value - form.fontSize, actualWidth, form.fontSize - (font.descender * fontRatio.value));
+        ctx.value.strokeRect(lastX.value + kerning, lastY.value - ascenderHeight.value, actualWidth, fontHeight.value);
       }
       lastGlyph.value = glyph;
       lastX.value += actualWidth;
@@ -153,21 +155,26 @@
 
   function newLine() {
     lastX.value = 0;
-    lastY.value += (font.ascender - font.descender) * fontRatio.value + halfLineHeight.value;
+    lastY.value += form.fontSize + lineGap.value;
   }
 
   function toGithub() {
     open('https://github.com/kooriookami/canvas-text');
   }
 
+  // 字体比例
   const fontRatio = computed(() => {
-    if (font) {
-      return form.fontSize / font.unitsPerEm;
+    if (font.value) {
+      return form.fontSize / font.value.unitsPerEm;
     }
     return 1;
   });
-
-  const halfLineHeight = computed(() => (font.ascender - font.descender) * fontRatio.value * (form.lineHeight - 1) / 2);
+  // 字体高度
+  const fontHeight = computed(() => (font.value.ascender - font.value.descender) * fontRatio.value);
+  // 基线到顶部的高度
+  const ascenderHeight = computed(() => font.value.ascender * fontRatio.value);
+  // 行间距
+  const lineGap = computed(() => form.fontSize * (form.lineHeight - 1));
 
   onMounted(() => {
     ctx.value = canvas.value.getContext('2d');
