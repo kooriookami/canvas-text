@@ -28,6 +28,17 @@
 
       <div class="form-main">
         <el-form :model="form" label-width="auto">
+          <el-form-item label="字体">
+            <el-upload
+              style="width: 100%"
+              drag
+              :show-file-list="false"
+              accept="font/*"
+              :before-upload="uploadFont"
+            >
+              点击或拖拽上传字体文件
+            </el-upload>
+          </el-form-item>
           <el-form-item label="宽度">
             <el-input-number
               v-model="form.width"
@@ -154,6 +165,18 @@
   function newLine() {
     lastX.value = 0;
     lastY.value += form.fontSize + lineGap.value;
+  }
+
+  function uploadFont(file) {
+    loading.value = true;
+    const buffer = file.arrayBuffer();
+    buffer.then(data => {
+      font.value = opentype.parse(data);
+      drawText();
+    }).finally(() => {
+      loading.value = false;
+    });
+    return false;
   }
 
   function toGithub() {
