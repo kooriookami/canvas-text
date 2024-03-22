@@ -7,7 +7,6 @@
         title="字体加载中..."
         :closable="false"
       />
-      <!--      <p style="font-size: 48px;line-height: 2;font-family: 得意黑;width: 1440px">{{ form.text }}</p>-->
       <canvas ref="canvas" />
     </div>
     <div class="form">
@@ -124,7 +123,6 @@
     lastGlyph.value = font.value.charToGlyph('');
 
     const charList = Array.from(form.text);
-    console.log(charList);
     // 绘制单个文字 + kerning 控制
     charList.forEach(char => {
       drawChar(char);
@@ -137,7 +135,7 @@
       newLine();
     } else {
       const glyph = font.value.charToGlyph(char);
-      let kerning = font.value.getKerningValue(lastGlyph, glyph) * fontRatio.value;
+      let kerning = font.value.getKerningValue(lastGlyph.value, glyph) * fontRatio.value;
       const actualWidth = glyph.advanceWidth * fontRatio.value + kerning;
       if (lastX.value + actualWidth > form.width) {
         newLine();
